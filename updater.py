@@ -1,4 +1,5 @@
 from utils import *
+import re
 import shutil
 import os
 import json
@@ -8,14 +9,40 @@ class Update:
     def __init__(self, cfg2: Config) -> None:
         self.cfg2 = cfg2
         self.docs_dir = os.path.normpath(self.cfg2.o_dir_path)
+
+    def get_ffdec_asset(self):
+        """Return (rel, asset_name) where asset_name is the chosen ffdec zip asset or None."""
+        try:
+            rel = github_release(self.cfg2.ffdec_repo)
+        except Exception as e:
+            raise
+        version = rel.latest_version.lstrip("v").lstrip("V")
+        releases = rel.releases
+        desired_name = f"ffdec_{version}.zip"
+        asset_name = None
+        if desired_name in releases:
+            asset_name = desired_name
+        else:
+            candidates = []
+            for name in releases:
+                m = re.match(r'^ffdec_(\d+\.\d+\.\d+)\.zip$', name)
+                if m:
+                    candidates.append((name, m.group(1)))
+            if candidates:
+                candidates.sort(key=lambda x: tuple(int(y) for y in x[1].split('.')), reverse=True)
+                asset_name = candidates[0][0]
+        return rel, asset_name
     
     def download_ffdec(self):
         try:
-            ffdec_info = github_release(self.cfg2.ffdec_repo,2)
+            rel, asset_name = self.get_ffdec_asset()
         except Exception as e:
             print(f"获取 ffdec 版本信息时出错: {str(e.__class__.__name__)}: {e}")
             return False
-        ffdec_url = self.cfg2.proxy_url + ffdec_info.download_url
+        if not asset_name:
+            print("未找到匹配的 ffdec zip 发行文件。")
+            return False
+        ffdec_url = self.cfg2.proxy_url + rel.releases[asset_name]
         print("开始下载 ffdec...")
         print(
             "警告: 使用内置下载可能会非常慢，建议手动下载 ffdec 的压缩包，并将文件（确保包含 'ffdec.jar'）解压到 'ffdec' 目录中。"
@@ -159,15 +186,16 @@ class Update:
     
     def check_ffdec_update(self):
         try:
-            ffdec_info = github_release(self.cfg2.ffdec_repo,2)
-            if ffdec_info.latest_version != self.cfg2.ffdec_version and os.path.isfile("ffdec/ffdec.jar") and self.cfg2.check_update:
-                if not choose(f"当前 ffdec 版本 {self.cfg2.ffdec_version}, 检测到新版本(文件名：{ffdec_info.name})，是否更新？ (Y/n): "):
+            rel, asset_name = self.get_ffdec_asset()
+            display_name = asset_name if asset_name else rel.latest_version
+            if rel.latest_version != self.cfg2.ffdec_version and os.path.isfile("ffdec/ffdec.jar") and self.cfg2.check_update:
+                if not choose(f"当前 ffdec 版本 {self.cfg2.ffdec_version}, 检测到新版本(文件名：{display_name})，是否更新？ (Y/n): "):
                     return False
-            if ffdec_info.latest_version == self.cfg2.ffdec_version and os.path.isfile("ffdec/ffdec.jar"):
+            if rel.latest_version == self.cfg2.ffdec_version and os.path.isfile("ffdec/ffdec.jar"):
                 return False
             if not self.ffdec_update() and not os.path.isfile("ffdec/ffdec.jar"):
                 exit()
-            self.cfg2.ffdec_version = ffdec_info.latest_version
+            self.cfg2.ffdec_version = rel.latest_version
             self.cfg2.save()
             return True
         except Exception as e:
