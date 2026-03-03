@@ -1,4 +1,4 @@
-# 这是啥 WHAT IS THIS
+
 
 ## 简介 / Introduction
 
@@ -39,19 +39,10 @@ pip3 install retrying pypdf requests
 - 支持平台 / support platform:  
     Windows (x86_64) / Linux (x86_64/arm64) / MacOS (x86_64/arm64) / Android (arm64)
 
-## 如何使用 / How to Use
+## 如何使用
 
-在程序目录下运行：
-
-```bash
-python3 main.py
-```
-
-- 控制台输入网址并回车。  
-    Enter the URL in the console.
-- 首次运行会生成配置文件，检测更新并下载 ffdec。  
-    On first run, there will be a configuration file `config.json`, then check the updates and download the ffdec.
-
+下载原作者发行版后在程序目录下以管理员身份运行： main.exe
+ **注意** ： 使用代理可能导致出错。
 
 ## 配置 / Configuration
 ### 说明 / Description
